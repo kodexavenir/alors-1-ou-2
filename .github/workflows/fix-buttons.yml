@@ -1,0 +1,35 @@
+name: Fix app interactions
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch interaction handlers
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="document.addEventListener('click',function(e){const b=e.target.closest('[data-action]');if(!b)return;const a=b.dataset.action;if(a==='start')startGame();else if(a==='home')goHome();else if(a==='reset')reset();else if(a==='card')pickCard(Number(b.dataset.i));else if(a==='choose')choose(Number(b.dataset.n));else if(a==='next')next();else if(a==='select')setPhase('select');else if(a==='unlock')unlock()});save();render()"
+          new="let lastTouch=0;function handleAction(e){if(e.type==='click'&&Date.now()-lastTouch<800)return;const b=e.target&&e.target.closest?e.target.closest('[data-action]'):null;if(!b)return;const a=b.dataset.action;if(e.cancelable)e.preventDefault();if(a==='start')startGame();else if(a==='home')goHome();else if(a==='reset')reset();else if(a==='card')pickCard(Number(b.dataset.i));else if(a==='choose')choose(Number(b.dataset.n));else if(a==='next')next();else if(a==='select')setPhase('select');else if(a==='unlock')unlock()}document.addEventListener('click',handleAction,{passive:false});document.addEventListener('touchend',function(e){lastTouch=Date.now();handleAction(e)},{passive:false});save();render()"
+          if old in s:
+              s=s.replace(old,new)
+          s=s.replace('<button class="btn" data-action="start">','<button type="button" class="btn" data-action="start">')
+          s=s.replace('<button class="reset" data-action="reset">','<button type="button" class="reset" data-action="reset">')
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git diff --cached --quiet || git commit -m "Fix antichambre touch interaction"
+          git push

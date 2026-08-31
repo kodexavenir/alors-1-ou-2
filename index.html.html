@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ALORS ? 1 OU 2 ?</title>
+    
+    <!-- Tailwind CSS pour le style -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel pour compiler le JSX dans le navigateur -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Couleur de fond par défaut pour éviter un flash blanc au chargement */
+        body {
+            background-color: #120508;
+            margin: 0;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent; /* Enlève le carré bleu au clic sur mobile */
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const STANDARD_CHOICES = [
+          { good: "Massage sensuel du dos (20 min)", bad: "Nettoyage intégral de la cuisine" },
+          { good: "Contrôle absolu du programme TV", bad: "Corvée de nettoyage des salles de bain" },
+          { good: "Service du petit-déjeuner au lit", bad: "Gestion exclusive des déchets de la semaine" },
+          { good: "Veto inconditionnel sur une décision", bad: "Massage des pieds obligatoire (15 min)" },
+          { good: "Grasse matinée sans interruption", bad: "Réveil anticipé pour préparer le café" },
+          { good: "Dîner favori préparé par l'autre", bad: "Repas de secours (pâtes au beurre)" },
+          { good: "Soirée de repos absolu sur le canapé", bad: "Rangement complet de la pièce à vivre" },
+          { good: "Joker 'Je passe mon tour'", bad: "Gestion immédiate de la paperasse en retard" },
+          { good: "Prochain resto offert par l'autre", bad: "Financement des prochaines courses" },
+          { good: "Soirée déconnectée (Zéro écran)", bad: "Confiscation du téléphone pendant 2 heures" },
+          { good: "Contrôle de l'ambiance musicale (24h)", bad: "Pliage et rangement du linge propre" },
+          { good: "Droit à un caprice culinaire", bad: "Préparation du lit au carré chaque matin" },
+          { good: "Soirée surprise organisée par l'autre", bad: "Nettoyage complet du véhicule" },
+          { good: "Bain chaud préparé par l'autre", bad: "Aspiration intégrale du logement" },
+          { good: "Massage crânien (15 min)", bad: "Nettoyage des vitres du salon" },
+          { good: "Choix de la prochaine sortie", bad: "Nettoyer l'intérieur du frigo" },
+          { good: "Une heure de tranquillité absolue", bad: "Faire les poussières partout" },
+          { good: "L'autre te prépare ton dessert préféré", bad: "Manger les restes d'hier" },
+          { good: "Tu gagnes un 'Oui' automatique", bad: "Tu dois dire 'Oui' à la prochaine demande" },
+          { good: "Soirée jeux vidéo / passion sans reproche", bad: "Trier les placards de la chambre" },
+          { good: "Apéro servi sur un plateau", bad: "Descendre toutes les poubelles" },
+          { good: "L'autre fait la vaisselle à ta place", bad: "Faire la vaisselle des deux prochains jours" },
+          { good: "Massage des épaules (10 min)", bad: "Repasser 5 vêtements de l'autre" },
+          { good: "Choix du film ce soir", bad: "L'autre choisit le film ce soir" },
+          { good: "Livraison de repas de ton choix", bad: "Cuisiner un repas équilibré pour demain" },
+          { good: "Câlins à volonté sur demande", bad: "Passer la serpillière" },
+          { good: "Droit d'annuler une sortie prévue", bad: "Organiser la prochaine sortie de A à Z" },
+          { good: "Petit cadeau surprise demain", bad: "Acheter des fleurs/chocolats pour l'autre" },
+          { good: "L'autre porte ta tenue préférée", bad: "Porter la tenue que l'autre choisit" },
+          { good: "Soirée pop-corn et plaid", bad: "Nettoyer le micro-ondes et le four" },
+          { good: "Tu es le roi/la reine pendant 1h", bad: "Tu es le serviteur/la servante pendant 1h" },
+          { good: "Droit de changer de musique en voiture", bad: "Interdiction de toucher à l'autoradio" },
+          { good: "Un compliment par heure aujourd'hui", bad: "Faire un compliment par heure à l'autre" },
+          { good: "L'autre te prépare ton bain", bad: "Nettoyer la douche/baignoire à fond" },
+          { good: "Dégustation de ton vin/boisson favorite", bad: "Boire un grand verre d'eau" },
+          { good: "L'autre te fait la lecture au lit", bad: "Lire un article ennuyeux à voix haute" },
+          { good: "Soirée discussion profonde", bad: "Écouter l'autre parler de sa passion (15 min)" },
+          { good: "L'autre te brosse/coiffe les cheveux", bad: "Faire la manucure de l'autre" },
+          { good: "Droit de voler une frite/part de l'autre", bad: "Céder ta meilleure part au repas" },
+          { good: "L'autre va chercher le courrier", bad: "Gérer tous les appels administratifs" },
+          { good: "Soirée nostalgie (Photos de vous)", bad: "Trier les photos du téléphone" },
+          { good: "L'autre te chante une chanson", bad: "Chanter une chanson d'amour à tue-tête" },
+          { good: "Massage des mains avec crème", bad: "Laver les sols de la salle de bain" },
+          { good: "Tu choisis le parfum de l'autre", bad: "L'autre choisit ton parfum aujourd'hui" },
+          { good: "Droit de piquer la couette", bad: "Dormir avec la petite couverture" },
+          { good: "L'autre te prépare un cocktail", bad: "Préparer des cocktails complexes" },
+          { good: "Tu choisis la position pour dormir", bad: "Dormir du côté que tu aimes le moins" },
+          { good: "L'autre fait le lit pendant 3 jours", bad: "Changer tous les draps de la maison" },
+          { good: "Soirée pyjama acceptée", bad: "Devoir s'habiller chic pour rester chez soi" },
+          { good: "Droit à un massage complet de 30 min", bad: "Nettoyage de printemps (1h de corvées)" }
+        ];
+
+        const INTIMATE_CHOICES = [
+          { good: "Douche partagée à la bougie", bad: "Nettoyer la douche en sous-vêtements" },
+          { good: "Massage sensuel à l'huile tiède (30m)", bad: "Massage des pieds de l'autre (20m)" },
+          { good: "Strip-tease de l'autre partenaire", bad: "Faire un strip-tease lent sur une musique" },
+          { good: "Tu contrôles l'autre pendant 15 min", bad: "Tu as les yeux bandés pendant 15 min" },
+          { good: "Baiser langoureux de 5 minutes", bad: "Ne pas embrasser sur les lèvres pendant 2h" },
+          { good: "L'autre réalise un de tes fantasmes", bad: "Avouer un fantasme inavoué" },
+          { good: "Jeu de rôle : tu choisis le scénario", bad: "Jeu de rôle : l'autre choisit les règles" },
+          { good: "Soirée sous les draps sans vêtements", bad: "Dormir en pyjama complet fermé" },
+          { good: "Lap dance privé de l'autre", bad: "Faire une danse sensuelle pour l'autre" },
+          { good: "L'autre te murmure des mots doux", bad: "Chuchoter à l'oreille de l'autre pendant 10m" },
+          { good: "Caresses avec une plume/objet doux", bad: "Rester immobile sous les caresses (5 min)" },
+          { good: "Tu choisis les sous-vêtements de l'autre", bad: "L'autre choisit tes sous-vêtements" },
+          { good: "Bain moussant à deux", bad: "Préparer la chambre romantique (bougies, etc)" },
+          { good: "Action vérité (Action chaude garantie)", bad: "Vérité absolue sur une question intime" },
+          { good: "L'autre t'embrasse partout sauf la bouche", bad: "Faire le tour du corps de l'autre par des baisers" },
+          { good: "Droit à un préliminaire de 20 min", bad: "Faire durer les préliminaires de l'autre" },
+          { good: "Tu attaches l'autre (doucement)", bad: "Tu te laisses attacher (doucement)" },
+          { good: "Soirée sans tabou", bad: "Répondre à 3 questions gênantes" },
+          { good: "Massage tantrique", bad: "Créer une playlist sensuelle pour ce soir" },
+          { good: "L'autre utilise un glaçon sur toi", bad: "Utiliser un glaçon sur le corps de l'autre" },
+          { good: "Tu donnes le rythme de la soirée", bad: "Tu dois obéir à un ordre intime" },
+          { good: "Séance photo intime (l'autre photographie)", bad: "Poser pour une photo intime" },
+          { good: "Baisers dans le cou pendant 5 min", bad: "Masser le cuir chevelu de l'autre (10 min)" },
+          { good: "Droit d'explorer un nouvel endroit", bad: "Faire l'amour dans un lieu inhabituel" },
+          { good: "L'autre te déshabille avec les dents", bad: "Déshabiller l'autre à une seule main" },
+          { good: "Jeu des températures (chaud/froid)", bad: "Préparer les accessoires de la soirée" },
+          { good: "Tu choisis le mot de passe du plaisir", bad: "L'autre a le droit de dire 'Stop' pour te frustrer" },
+          { good: "Soirée dédiée à TON plaisir", bad: "Soirée dédiée à SON plaisir" },
+          { good: "L'autre doit te séduire à nouveau", bad: "Jouer la scène de votre première rencontre" },
+          { good: "Tu choisis la position ce soir", bad: "L'autre choisit la position ce soir" },
+          { good: "Massage aux huiles essentielles", bad: "Acheter une nouvelle huile de massage" },
+          { good: "L'autre te nourrit avec un dessert", bad: "Manger quelque chose sur le corps de l'autre" },
+          { good: "Baisers sur chaque centimètre du dos", bad: "Garder le silence total pendant l'acte" },
+          { good: "Tu dictes les règles du jeu ce soir", bad: "Se soumettre aux règles du jeu ce soir" },
+          { good: "L'autre doit te faire deviner un mot en t'embrassant", bad: "Deviner le mot tracé sur ton dos" },
+          { good: "Privilège du matin (réveil coquin)", bad: "Initier les choses au beau milieu de la nuit" },
+          { good: "L'autre te masse jusqu'à l'endormissement", bad: "Masser l'autre jusqu'à l'endormissement" },
+          { good: "Tu choisis l'intensité (doux ou sauvage)", bad: "L'autre choisit le rythme de la soirée" },
+          { good: "L'autre te susurre ses envies", bad: "Écrire une lettre érotique à l'autre" },
+          { good: "Partage d'un secret brûlant", bad: "Avouer une chose qui t'excite secrètement" },
+          { good: "Droit de regarder l'autre se toucher", bad: "Se toucher pendant que l'autre regarde" },
+          { good: "L'autre porte un bandeau", bad: "Tu portes le bandeau" },
+          { good: "Séance de chatouilles interdites", bad: "Subir 1 minute de chatouilles sans bouger" },
+          { good: "Soirée lumière tamisée et regards intenses", bad: "Se regarder dans les yeux sans rire (3 min)" },
+          { good: "Tu décides quand les vêtements tombent", bad: "L'autre décide de ton effeuillage" },
+          { good: "L'autre te fait frissonner", bad: "Trouver la zone la plus sensible de l'autre" },
+          { good: "Droit à un slow romantique nus", bad: "Danser de manière suggestive pour l'autre" },
+          { good: "Tu mets le doigt sur ce que tu veux", bad: "L'autre guide tes mains" },
+          { good: "Révélation d'un désir futur", bad: "S'engager à réaliser un désir de l'autre" },
+          { good: "Extase totale organisée par l'autre", bad: "Te donner à 100% pour l'extase de l'autre" }
+        ];
+
+        const SpatialCard = ({ id, onClick, pickedBy, isSelected }) => {
+          const cardRef = useRef(null);
+          const [isHovered, setIsHovered] = useState(false);
+          const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
+          const [rotation, setRotation] = useState({ rx: 0, ry: 0 });
+
+          const disabled = pickedBy !== null; // Grisée si déjà prise
+
+          const handleMouseMove = useCallback((e) => {
+            if (disabled || !cardRef.current) return;
+            
+            const rect = cardRef.current.getBoundingClientRect();
+            // Prise en charge du tactile (mobile) ou de la souris
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const x = clientX - rect.left; 
+            const y = clientY - rect.top;  
+            
+            const px = (x / rect.width) * 100;
+            const py = (y / rect.height) * 100;
+            
+            const rx = ((y / rect.height) - 0.5) * -30;
+            const ry = ((x / rect.width) - 0.5) * 30;
+
+            setMousePos({ x: px, y: py });
+            setRotation({ rx, ry });
+          }, [disabled]);
+
+          const handleMouseEnter = () => { if (!disabled) setIsHovered(true); };
+          const handleMouseLeave = () => {
+            setIsHovered(false);
+            setRotation({ rx: 0, ry: 0 });
+            setMousePos({ x: 50, y: 50 });
+          };
+
+          const displayNumber = (id + 1).toString().padStart(2, '0');
+
+          return (
+            <div
+              ref={cardRef}
+              onMouseMove={handleMouseMove}
+              onTouchMove={handleMouseMove}
+              onMouseEnter={handleMouseEnter}
+              onTouchStart={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+              onTouchEnd={handleMouseLeave}
+              onClick={() => !disabled && onClick()}
+              className={`spatial-container ${disabled ? 'is-disabled' : 'cursor-pointer'} ${isSelected ? 'is-selected' : ''}`}
+              style={{
+                transform: isHovered && !disabled 
+                  ? `perspective(1000px) rotateX(${rotation.rx}deg) rotateY(${rotation.ry}deg) scale3d(1.05, 1.05, 1.05)` 
+                  : 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)'
+              }}
+            >
+              <div className="spatial-surface flex flex-col items-center justify-center relative">
+                {!disabled && (
+                  <div 
+                    className="spatial-glare transition-opacity duration-300"
+                    style={{
+                      opacity: isHovered ? 1 : 0,
+                      background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, rgba(229, 152, 155, 0.4) 0%, transparent 60%)`
+                    }}
+                  />
+                )}
+                
+                <div className="relative z-10 w-full h-full flex flex-col items-center justify-center pointer-events-none">
+                  {disabled ? (
+                    <div className="flex flex-col items-center opacity-40">
+                      <span className="text-xs uppercase tracking-widest text-gray-400 mb-2">Pris par</span>
+                      <span className={`text-lg font-bold font-serif ${pickedBy === 'lui' ? 'text-blue-300' : 'text-rose-300'}`}>
+                        {pickedBy === 'lui' ? 'LUI' : 'ELLE'}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-rose-200/50 text-2xl font-serif tracking-widest transition-colors duration-500 group-hover:text-rose-100">
+                      {displayNumber}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {!disabled && (
+                <div 
+                  className="spatial-shadow transition-all duration-300"
+                  style={{
+                    opacity: isHovered ? 1 : 0.3,
+                    transform: `translateY(${isHovered ? '15px' : '5px'}) scale(${isHovered ? 0.95 : 1})`,
+                    filter: `blur(${isHovered ? '20px' : '10px'})`,
+                    background: isHovered ? 'rgba(50, 10, 20, 0.8)' : 'rgba(0,0,0,0.5)'
+                  }}
+                />
+              )}
+            </div>
+          );
+        };
+
+        const Particles = ({ deckPhase }) => {
+          const isIntimate = deckPhase === 'INTIMATE';
+          return (
+            <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+              {[...Array(25)].map((_, i) => {
+                const left = `${Math.random() * 100}%`;
+                const size = `${Math.random() * 4 + 2}px`;
+                const duration = `${Math.random() * 10 + 15}s`;
+                const delay = `-${Math.random() * 15}s`;
+                
+                const color = isIntimate 
+                  ? (Math.random() > 0.5 ? 'rgba(139, 0, 0, 0.4)' : 'rgba(212, 175, 55, 0.3)')
+                  : (Math.random() > 0.5 ? 'rgba(212, 175, 55, 0.4)' : 'rgba(229, 152, 155, 0.4)');
+                  
+                return (
+                  <div 
+                    key={i}
+                    className="absolute rounded-full"
+                    style={{
+                      left, width: size, height: size, background: color,
+                      boxShadow: `0 0 10px ${color}`, bottom: '-10%',
+                      animation: `floatUp ${duration} ${delay} linear infinite`
+                    }}
+                  />
+                );
+              })}
+            </div>
+          );
+        };
+
+        function App() {
+          // SAUVEGARDE LOCALE : On charge les données existantes si elles existent
+          const [deckPhase, setDeckPhase] = useState(() => localStorage.getItem('alors_deckPhase') || 'STANDARD');
+          const [gamePhase, setGamePhase] = useState(() => localStorage.getItem('alors_gamePhase') || 'HOME');
+          const [envelopes, setEnvelopes] = useState(() => {
+            const saved = localStorage.getItem('alors_envelopes');
+            return saved ? JSON.parse(saved) : null;
+          });
+          
+          const [selection, setSelection] = useState({ lui: null, elle: null });
+          const [results, setResults] = useState({ lui: null, elle: null });
+          const [isTransitioning, setIsTransitioning] = useState(false);
+
+          const initDeck = (phase) => {
+            const choicesList = phase === 'STANDARD' ? STANDARD_CHOICES : INTIMATE_CHOICES;
+            let choices = [...choicesList].sort(() => Math.random() - 0.5);
+            const envs = choices.map((choice, i) => ({
+              id: i, data: choice, pickedBy: null
+            }));
+            setEnvelopes(envs);
+            setDeckPhase(phase);
+          };
+
+          // Initialisation au premier lancement
+          useEffect(() => {
+            if (!envelopes) {
+              initDeck('STANDARD');
+            }
+          }, []);
+
+          // Sauvegarde automatique à chaque changement
+          useEffect(() => {
+            if (envelopes) localStorage.setItem('alors_envelopes', JSON.stringify(envelopes));
+            localStorage.setItem('alors_deckPhase', deckPhase);
+            localStorage.setItem('alors_gamePhase', gamePhase);
+          }, [deckPhase, gamePhase, envelopes]);
+
+          // Fonction de réinitialisation complète
+          const resetGame = () => {
+            if (window.confirm("Voulez-vous vraiment tout réinitialiser et recommencer à zéro ?")) {
+                localStorage.clear();
+                initDeck('STANDARD');
+                setGamePhase('HOME');
+            }
+          };
+
+          const changePhase = (newPhase) => {
+            setIsTransitioning(true);
+            setTimeout(() => {
+              setGamePhase(newPhase);
+              setIsTransitioning(false);
+            }, 600); 
+          };
+
+          const handleNextDay = () => {
+            setSelection({ lui: null, elle: null });
+            setResults({ lui: null, elle: null });
+            
+            const allPicked = envelopes.every(e => e.pickedBy !== null);
+            
+            if (allPicked) {
+              if (deckPhase === 'STANDARD') {
+                changePhase('TRANSITION');
+              } else {
+                alert("Vous avez terminé les 100 jours de l'expérience ! Félicitations.");
+                resetGame();
+              }
+            } else {
+              changePhase('SELECT_LUI');
+            }
+          };
+
+          const handleLevelUp = () => {
+            initDeck('INTIMATE');
+            changePhase('SELECT_LUI');
+          };
+
+          const handleSelectEnvelope = (env) => {
+            setEnvelopes(prev => prev.map(e => e.id === env.id ? { ...e, pickedBy: gamePhase === 'SELECT_LUI' ? 'lui' : 'elle' } : e));
+
+            const isGoodFirst = Math.random() > 0.5;
+            const mappedData = {
+              option1: isGoodFirst ? { type: 'good', text: env.data.good } : { type: 'bad', text: env.data.bad },
+              option2: isGoodFirst ? { type: 'bad', text: env.data.bad } : { type: 'good', text: env.data.good }
+            };
+
+            if (gamePhase === 'SELECT_LUI') {
+              setSelection(prev => ({ ...prev, lui: mappedData }));
+              changePhase('SELECT_ELLE');
+            } else if (gamePhase === 'SELECT_ELLE') {
+              setSelection(prev => ({ ...prev, elle: mappedData }));
+              changePhase('REVEAL_LUI');
+            }
+          };
+
+          const handleChoice = (player, choiceNum) => {
+            if (results[player.toLowerCase()]) return; 
+            
+            const data = player === 'LUI' ? selection.lui : selection.elle;
+            const selectedOption = choiceNum === 1 ? data.option1 : data.option2;
+            
+            setResults(prev => ({
+              ...prev,
+              [player.toLowerCase()]: { choiceNum, ...selectedOption }
+            }));
+          };
+
+          const globalCSS = `
+            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@200;300;400&display=swap');
+            
+            :root {
+              --bg-color: ${deckPhase === 'STANDARD' ? '#120508' : '#0a0005'};
+              --glass-bg: rgba(35, 10, 18, 0.4);
+              --glass-border: rgba(229, 152, 155, 0.15);
+              --gold-accent: rgba(212, 175, 55, 1);
+              --rose-accent: rgba(229, 152, 155, 1);
+              --crimson-accent: rgba(139, 0, 0, 1);
+            }
+
+            body { 
+              margin: 0; 
+              background-color: var(--bg-color); 
+              color: #fff; 
+              overflow-x: hidden; 
+              font-family: 'Inter', sans-serif; 
+              transition: background-color 2s ease;
+            }
+            
+            .font-serif { font-family: 'Playfair Display', serif; }
+
+            .ambient-glow {
+              position: fixed; top: 50%; left: 50%;
+              width: 120vw; height: 120vw;
+              transform: translate(-50%, -50%);
+              background: ${deckPhase === 'STANDARD' 
+                ? 'radial-gradient(circle at 40% 40%, rgba(229, 152, 155, 0.08) 0%, transparent 40%), radial-gradient(circle at 60% 60%, rgba(212, 175, 55, 0.05) 0%, transparent 40%)'
+                : 'radial-gradient(circle at 40% 40%, rgba(139, 0, 0, 0.08) 0%, transparent 50%), radial-gradient(circle at 60% 60%, rgba(212, 175, 55, 0.03) 0%, transparent 40%)'};
+              z-index: 0; pointer-events: none;
+              animation: pulseGlow 15s ease-in-out infinite alternate;
+            }
+
+            @keyframes pulseGlow {
+              0% { opacity: 0.7; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+              100% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(5deg); }
+            }
+            
+            @keyframes floatUp {
+              0% { transform: translateY(0) scale(1); opacity: 0; }
+              20% { opacity: 1; }
+              80% { opacity: 1; }
+              100% { transform: translateY(-120vh) scale(1.5); opacity: 0; }
+            }
+
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(229, 152, 155, 0.3); border-radius: 10px; }
+            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(212, 175, 55, 0.5); }
+
+            .spatial-container {
+              position: relative; width: 100%; aspect-ratio: 9/16;
+              border-radius: 8px; transform-style: preserve-3d;
+              transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+              z-index: 10;
+            }
+
+            .spatial-surface {
+              position: absolute; inset: 0; border-radius: inherit;
+              background: var(--glass-bg);
+              backdrop-filter: blur(15px) saturate(150%);
+              -webkit-backdrop-filter: blur(15px) saturate(150%);
+              border: 1px solid var(--glass-border);
+              overflow: hidden; transform: translateZ(10px);
+            }
+
+            .is-disabled .spatial-surface {
+              background: rgba(10, 5, 8, 0.6);
+              border-color: rgba(255, 255, 255, 0.05);
+              filter: grayscale(80%);
+              box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            }
+            .is-disabled {
+              transform: scale(0.95) translateZ(-10px) !important;
+              opacity: 0.5;
+            }
+
+            .spatial-glare { position: absolute; inset: 0; mix-blend-mode: overlay; pointer-events: none; }
+            .spatial-shadow { position: absolute; inset: 0; border-radius: inherit; transform: translateZ(0px); z-index: -1; }
+
+            .fade-enter {
+              opacity: 0; transform: translateY(15px);
+              animation: fadeEnterAnim 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            }
+            @keyframes fadeEnterAnim { to { opacity: 1; transform: translateY(0); } }
+
+            .btn-apple {
+              background: rgba(229, 152, 155, 0.1);
+              backdrop-filter: blur(15px);
+              border: 1px solid rgba(229, 152, 155, 0.3);
+              color: #e5989b; padding: 16px 45px;
+              border-radius: 100px; font-size: 11px;
+              letter-spacing: 0.2em; text-transform: uppercase;
+              transition: all 0.4s ease; position: relative; overflow: hidden;
+            }
+            .btn-apple:hover {
+              background: rgba(229, 152, 155, 0.2);
+              border-color: rgba(212, 175, 55, 0.5); color: #fff;
+              transform: scale(1.03); box-shadow: 0 10px 30px rgba(229, 152, 155, 0.15);
+            }
+
+            .dilemma-pane {
+              background: var(--glass-bg); backdrop-filter: blur(30px);
+              border: 1px solid var(--glass-border); border-radius: 20px;
+              transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+              position: relative; overflow: hidden;
+            }
+            .dilemma-pane:hover:not(.resolved) {
+              border-color: rgba(229, 152, 155, 0.4);
+              transform: translateY(-5px) scale(1.02);
+              background: rgba(45, 15, 25, 0.6);
+              box-shadow: 0 15px 40px rgba(229, 152, 155, 0.1);
+            }
+            
+            .dilemma-pane.resolved { pointer-events: none; }
+            
+            .dilemma-pane.chosen-good {
+              border-color: var(--gold-accent);
+              background: linear-gradient(180deg, rgba(212, 175, 55, 0.15) 0%, rgba(20,5,10,0.9) 100%);
+              box-shadow: 0 20px 60px rgba(212, 175, 55, 0.2);
+            }
+            .dilemma-pane.chosen-bad {
+              border-color: var(--crimson-accent);
+              background: linear-gradient(180deg, rgba(139, 0, 0, 0.2) 0%, rgba(20,5,10,0.9) 100%);
+              box-shadow: 0 20px 60px rgba(139, 0, 0, 0.25);
+            }
+            .dilemma-pane.rejected {
+              opacity: 0.2; filter: grayscale(80%) blur(2px); transform: scale(0.95);
+            }
+
+            .text-gradient {
+              background: linear-gradient(to right, #e5989b, #d4af37);
+              -webkit-background-clip: text; color: transparent;
+            }
+          `;
+
+          if (!envelopes) return null; // Sécurité le temps du chargement
+
+          return (
+            <div className="relative min-h-screen w-full flex flex-col items-center justify-center overflow-hidden">
+              <style>{globalCSS}</style>
+              <div className="ambient-glow" />
+              <Particles deckPhase={deckPhase} />
+
+              <div className={`relative z-10 w-full h-full max-w-6xl mx-auto px-4 py-8 flex flex-col justify-center transition-opacity duration-600 ${isTransitioning ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+                
+                {/* --- ACCUEIL --- */}
+                {gamePhase === 'HOME' && (
+                  <div className="text-center flex flex-col items-center fade-enter relative">
+                    <span className="font-sans text-[10px] uppercase tracking-[0.4em] text-rose-300/50 block mb-6">
+                      Expérience Premium
+                    </span>
+                    <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl italic text-gradient mb-6 drop-shadow-lg">
+                      Alors, 1 ou 2 ?
+                    </h1>
+                    
+                    <p className="font-sans text-xs md:text-sm text-rose-200/60 tracking-widest max-w-md mx-auto mb-16 font-light leading-relaxed">
+                      50 jours de hasard.<br/>Êtes-vous prêts à assumer ?
+                    </p>
+
+                    <button onClick={() => changePhase('SELECT_LUI')} className="btn-apple">
+                      Ouvrir l'Antichambre
+                    </button>
+                    
+                    <button onClick={resetGame} className="absolute -bottom-20 text-[9px] text-rose-300/30 hover:text-rose-300/80 uppercase tracking-widest transition-colors">
+                      Réinitialiser la progression
+                    </button>
+                  </div>
+                )}
+
+                {/* --- TRANSITION (Niveau 2) --- */}
+                {gamePhase === 'TRANSITION' && (
+                  <div className="text-center flex flex-col items-center fade-enter">
+                    <h1 className="font-serif text-4xl md:text-6xl text-rose-100 mb-6 drop-shadow-lg">
+                      Niveau Complété
+                    </h1>
+                    <p className="font-sans text-sm text-rose-200/60 tracking-widest max-w-md mx-auto mb-16 font-light leading-relaxed">
+                      Vous avez épuisé les 50 premières enveloppes.<br/><br/>
+                      Il est temps de passer aux choses sérieuses... Le mode Intime est débloqué.
+                    </p>
+                    <button onClick={handleLevelUp} className="btn-apple !border-red-800 !text-red-300 hover:!bg-red-900/30">
+                      Débloquer l'Intimité
+                    </button>
+                  </div>
+                )}
+
+                {/* --- SÉLECTION (Grille de 50) --- */}
+                {(gamePhase === 'SELECT_LUI' || gamePhase === 'SELECT_ELLE') && (
+                  <div className="flex flex-col h-full w-full justify-start md:justify-center fade-enter pt-10">
+                    <div className="text-center mb-10 shrink-0">
+                      <p className="font-sans text-[10px] uppercase tracking-[0.4em] text-rose-300/50 mb-3">
+                        {deckPhase === 'STANDARD' ? 'Mode Quotidien' : 'Mode Intime'} • {envelopes.filter(e => e.pickedBy).length}/50
+                      </p>
+                      <h2 className="font-serif italic text-4xl md:text-5xl text-rose-100 drop-shadow-md">
+                        Tour de {gamePhase === 'SELECT_LUI' ? 'LUI' : 'ELLE'}
+                      </h2>
+                    </div>
+
+                    <div className="w-full flex-1 overflow-y-auto custom-scrollbar px-2 pb-10 max-h-[70vh]">
+                      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-8 lg:grid-cols-10 gap-3 max-w-5xl mx-auto w-full">
+                        {envelopes.map((env) => (
+                          <SpatialCard 
+                            key={env.id} 
+                            id={env.id}
+                            pickedBy={env.pickedBy}
+                            isSelected={env.pickedBy === (gamePhase === 'SELECT_LUI' ? 'lui' : 'elle')}
+                            onClick={() => handleSelectEnvelope(env)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* --- RÉVÉLATION --- */}
+                {(gamePhase === 'REVEAL_LUI' || gamePhase === 'REVEAL_ELLE') && (() => {
+                  const player = gamePhase === 'REVEAL_LUI' ? 'LUI' : 'ELLE';
+                  const data = player === 'LUI' ? selection.lui : selection.elle;
+                  const result = player === 'LUI' ? results.lui : results.elle;
+
+                  const getPaneClass = (num, option) => {
+                    let base = "dilemma-pane w-full flex-1 p-8 md:p-10 flex flex-col justify-center cursor-pointer ";
+                    if (!result) return base;
+                    base += "resolved ";
+                    if (result.choiceNum !== num) return base + "rejected";
+                    return base + (option.type === 'good' ? "chosen-good" : "chosen-bad");
+                  };
+
+                  return (
+                    <div className="flex flex-col h-full w-full max-w-4xl mx-auto fade-enter">
+                      <div className="text-center mb-10 shrink-0">
+                        <span className="font-sans text-[10px] uppercase tracking-[0.4em] text-rose-300/50 block mb-3">
+                          Le Hasard a parlé
+                        </span>
+                        <h2 className="font-serif italic text-4xl md:text-5xl text-rose-100">
+                          {player}
+                        </h2>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row gap-6 md:gap-8 w-full min-h-[300px]">
+                        
+                        <div onClick={() => handleChoice(player, 1)} className={getPaneClass(1, data.option1)}>
+                          {!result ? (
+                            <div className="flex flex-col items-center text-center opacity-60">
+                              <span className="font-serif text-4xl text-rose-200 mb-4">I</span>
+                              <span className="font-sans text-[10px] tracking-widest uppercase text-rose-300/50">Dilemme Inconnu</span>
+                            </div>
+                          ) : (
+                            <div className="fade-enter">
+                              <span className={`font-sans text-[10px] uppercase tracking-widest block mb-4 ${data.option1.type === 'good' ? 'text-yellow-500' : 'text-red-500'}`}>
+                                {data.option1.type === 'good' ? 'Privilège Accordé' : 'Gage Imposé'}
+                              </span>
+                              <p className="font-serif text-xl md:text-2xl text-rose-50 leading-relaxed">
+                                {data.option1.text}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div onClick={() => handleChoice(player, 2)} className={getPaneClass(2, data.option2)}>
+                          {!result ? (
+                            <div className="flex flex-col items-center text-center opacity-60">
+                              <span className="font-serif text-4xl text-rose-200 mb-4">II</span>
+                              <span className="font-sans text-[10px] tracking-widest uppercase text-rose-300/50">Dilemme Inconnu</span>
+                            </div>
+                          ) : (
+                            <div className="fade-enter">
+                              <span className={`font-sans text-[10px] uppercase tracking-widest block mb-4 ${data.option2.type === 'good' ? 'text-yellow-500' : 'text-red-500'}`}>
+                                {data.option2.type === 'good' ? 'Privilège Accordé' : 'Gage Imposé'}
+                              </span>
+                              <p className="font-serif text-xl md:text-2xl text-rose-50 leading-relaxed">
+                                {data.option2.text}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+
+                      <div className="mt-12 h-12 flex justify-center shrink-0">
+                        {result && (
+                          <button 
+                            onClick={() => changePhase(player === 'LUI' ? 'REVEAL_ELLE' : 'SUMMARY')}
+                            className="btn-apple fade-enter"
+                          >
+                            Accepter & Continuer
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* --- BILAN FINAL DU JOUR --- */}
+                {gamePhase === 'SUMMARY' && (
+                  <div className="flex flex-col h-full w-full max-w-3xl mx-auto fade-enter">
+                    <div className="text-center mb-12">
+                      <span className="font-sans text-[10px] uppercase tracking-[0.4em] text-rose-300/50 block mb-3">
+                        Verdict de la journée
+                      </span>
+                      <h1 className="font-serif italic text-4xl md:text-5xl text-gradient">
+                        Bilan
+                      </h1>
+                    </div>
+
+                    <div className="space-y-6">
+                       <div className="dilemma-pane p-8 relative overflow-hidden">
+                         <div className="absolute inset-0 opacity-30 pointer-events-none" 
+                              style={{ background: results.lui.type === 'good' ? 'radial-gradient(circle at left, rgba(212,175,55,0.4), transparent 70%)' : 'radial-gradient(circle at left, rgba(139,0,0,0.5), transparent 70%)'}} />
+                         <span className="relative z-10 font-sans text-[10px] uppercase tracking-[0.3em] text-rose-300/60 mb-2 block">
+                           Destin de LUI
+                         </span>
+                         <p className="relative z-10 font-serif text-2xl text-rose-50">
+                           {results.lui.text}
+                         </p>
+                       </div>
+
+                       <div className="dilemma-pane p-8 relative overflow-hidden">
+                         <div className="absolute inset-0 opacity-30 pointer-events-none" 
+                              style={{ background: results.elle.type === 'good' ? 'radial-gradient(circle at left, rgba(212,175,55,0.4), transparent 70%)' : 'radial-gradient(circle at left, rgba(139,0,0,0.5), transparent 70%)'}} />
+                         <span className="relative z-10 font-sans text-[10px] uppercase tracking-[0.3em] text-rose-300/60 mb-2 block">
+                           Destin de ELLE
+                         </span>
+                         <p className="relative z-10 font-serif text-2xl text-rose-50">
+                           {results.elle.text}
+                         </p>
+                       </div>
+                    </div>
+
+                    <div className="mt-16 text-center">
+                       <button 
+                          onClick={handleNextDay}
+                          className="font-sans text-[10px] text-rose-200/60 hover:text-rose-100 tracking-[0.4em] uppercase transition-colors duration-300 border border-rose-300/20 px-8 py-4 rounded-full"
+                        >
+                          Terminer pour aujourd'hui
+                        </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
